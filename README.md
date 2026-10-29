@@ -4,7 +4,7 @@ A Christmas wishlist where you share the gifts you'd actually love, so friends c
 
 ## Features
 
-- **Your wishlist:** add wishes with an optional link, price, image, priority ("Really need", "Would love", "Dream gift") and a reason why you want it.
+- **Add a wish in seconds:** paste a link from any shop and the name and photo fill in automatically. Pick how badly you want it (Really need / Would love / Dream gift) and optionally say why. No link? Add it by name.
 - **Visibility:** make your list public, visible to all your contacts, or only to friends you hand-pick.
 - **No spoilers:** you never see who claimed or bought something on your own list.
 - **Gift registry:** friends see what's still free, what's reserved and what's bought, so nobody doubles up.
@@ -36,3 +36,4 @@ Everything is stored in your browser only (no accounts or server yet). Next step
 1. Accounts and a shared database (e.g. Supabase or Firebase).
 2. Verified purchase tracking through retailer affiliate programs.
 3. Server-side receipt storage, visible only to the buyer.
+4. Move the link lookup to the server. It now uses [Microlink](https://microlink.io)'s free tier (about 50 lookups per visitor per day); when that fails, the name is guessed from the link itself.

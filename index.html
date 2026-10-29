@@ -62,6 +62,22 @@
 
         .item { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; }
         .item .img { aspect-ratio: 4/3; background: var(--gold-soft) center/cover no-repeat; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; }
+        .item .img img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
+
+        .preview { display: flex; gap: 12px; align-items: center; margin-top: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+        .pv-img { width: 64px; height: 64px; flex: none; border-radius: 10px; background: var(--gold-soft); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .pv-img:empty::after { content: '🎁'; font-size: 1.6rem; }
+        .pv-img img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
+        .pv-body { flex: 1; min-width: 0; }
+        .pv-status { font-size: .78rem; color: var(--muted); }
+        .preview input.pv-title { background: none; border: 1px dashed transparent; padding: 4px 6px; margin-left: -6px; font-weight: 600; width: calc(100% + 6px); }
+        .preview input.pv-title:hover, .preview input.pv-title:focus { border-color: var(--line); }
+        .linkbtn { background: none; border: none; padding: 6px 0; color: var(--muted); text-decoration: underline; font-size: .82rem; }
+        .prio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .prio-btn { padding: 12px 6px; border-radius: 12px; font-weight: 600; text-align: center; }
+        .prio-btn.must.on { background: var(--red-soft); border-color: var(--red); color: var(--red); }
+        .prio-btn.nice.on { background: var(--green-soft); border-color: var(--green); color: var(--green); }
+        .prio-btn.dream.on { background: var(--gold-soft); border-color: var(--gold); color: var(--gold); }
         .item .img.ph { aspect-ratio: auto; height: 96px; font-size: 2rem; }
         .item .body { padding: 12px 14px; flex: 1; display: flex; flex-direction: column; gap: 6px; }
         .item .price { color: var(--green); font-weight: 600; font-size: .9rem; }
@@ -308,7 +324,7 @@
 
         function itemImage(item) {
             const img = safeUrl(item.image);
-            return img ? `<div class="img" style="background-image:url('${esc(img)}')"></div>` : `<div class="img ph">🎁</div>`;
+            return img ? `<div class="img"><img src="${esc(img)}" alt="" loading="lazy" onerror="this.parentNode.classList.add('ph');this.replaceWith('🎁')"></div>` : `<div class="img ph">🎁</div>`;
         }
 
         function itemCard(item, ownerId, mode) {
@@ -473,31 +489,145 @@
         // ---------- Dialogs ----------
         const dlg = document.getElementById('dlg');
 
+        // ---------- Link lookup ----------
+        // Reads the product name and photo from a shop link. Browsers can't read other sites
+        // directly, so this uses Microlink (free tier, per visitor). If that fails we guess
+        // the name from the link itself, so adding a wish never gets stuck.
+        const BAD_TITLE = /page not found|not found|404|access denied|robot|captcha|just a moment|attention required|sign in|error/i;
+        const SKIP_SEGMENTS = new Set(['nl', 'en', 'de', 'be', 'fr', 'p', 'dp', 'gp', 'product', 'products', 'item', 'items', 'shop', 'artikel', 'producten', 'nl-nl', 'en-gb']);
+
+        function shopName(u) {
+            const host = new URL(u).hostname.replace(/^www\./, '').split('.');
+            const name = host.length > 1 ? host[host.length - 2] : host[0];
+            return name.charAt(0).toUpperCase() + name.slice(1);
+        }
+
+        function guessFromUrl(u) {
+            const url = new URL(u);
+            const words = url.pathname.split('/')
+                .map(seg => decodeURIComponent(seg).replace(/\.(html?|php|aspx?)$/i, ''))
+                .filter(seg => seg && !SKIP_SEGMENTS.has(seg.toLowerCase()) && /[a-z]{3}/i.test(seg) && /[-_ ]/.test(seg))
+                .sort((a, b) => b.length - a.length)[0];
+            if (!words) return `Something from ${shopName(u)}`;
+            const parts = words.replace(/[-_+]+/g, ' ').trim().split(/\s+/);
+            // Drop trailing product codes like "ve121i1dc a11", keeping at least 3 words
+            while (parts.length > 3 && /\d/.test(parts[parts.length - 1])) parts.pop();
+            const t = parts.join(' ');
+            return t.charAt(0).toUpperCase() + t.slice(1);
+        }
+
+        async function lookupLink(u) {
+            const fallback = { title: guessFromUrl(u), image: '' };
+            try {
+                const ctrl = new AbortController();
+                const timer = setTimeout(() => ctrl.abort(), 8000);
+                const res = await fetch('https://api.microlink.io/?url=' + encodeURIComponent(u), { signal: ctrl.signal });
+                clearTimeout(timer);
+                const json = await res.json();
+                if (json.status !== 'success') return fallback;
+                const d = json.data || {};
+                let title = (d.title || '').replace(/\s+/g, ' ').trim();
+                // Drop shop-name suffixes like " | bol.com" or " - Zalando"
+                title = title.replace(/\s+[|\-–—]\s+[^|\-–—]*$/, m => m.length < 30 ? '' : m).trim();
+                const usable = title && !BAD_TITLE.test(title) && title.toLowerCase() !== shopName(u).toLowerCase();
+                return {
+                    title: usable ? title.slice(0, 120) : fallback.title,
+                    image: safeUrl(d.image?.url) || ''
+                };
+            } catch (e) {
+                return fallback;
+            }
+        }
+
         function openItemForm(item) {
-            const it = item || { title: '', link: '', price: '', priority: 'nice', reason: '', image: '' };
+            const it = item || { title: '', link: '', priority: '', reason: '', image: '' };
+            let noLink = !!item && !it.link;
+            let lookupId = 0;
+
             dlg.innerHTML = `<form class="dlg" method="dialog" id="itemform">
                 <h2 style="margin-top:0">${item ? 'Edit wish' : 'Add a wish'}</h2>
-                <label for="f-title">What would you like?</label>
-                <input type="text" id="f-title" required maxlength="120" value="${esc(it.title)}" placeholder="e.g. Wool scarf in forest green">
-                <label for="f-link">Link to the item (optional)</label>
-                <input type="url" id="f-link" value="${esc(it.link)}" placeholder="https://…">
-                <div class="row">
-                    <div><label for="f-price">Approx. price € (optional)</label><input type="number" min="0" step="1" id="f-price" value="${esc(it.price)}"></div>
-                    <div><label for="f-priority">How much do you want it?</label>
-                        <select class="field" id="f-priority">${Object.entries(PRIORITY).map(([k, [, l]]) => `<option value="${k}" ${it.priority === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+                <div id="f-linkwrap">
+                    <label for="f-link">Paste the link</label>
+                    <input type="url" id="f-link" value="${esc(it.link)}" placeholder="Paste a link from any shop" autocomplete="off">
                 </div>
-                <label for="f-image">Image URL (optional)</label>
-                <input type="url" id="f-image" value="${esc(it.image)}" placeholder="https://…/photo.jpg">
-                <label for="f-reason">Why do you want or need it? (optional)</label>
+                <div class="preview" id="f-preview" hidden>
+                    <div class="pv-img" id="f-img"></div>
+                    <div class="pv-body">
+                        <div class="pv-status" id="f-status"></div>
+                        <input type="text" id="f-title" class="pv-title" maxlength="120" value="${esc(it.title)}" placeholder="What is it?" aria-label="Name">
+                    </div>
+                </div>
+                <button type="button" class="linkbtn" id="f-nolink">${noLink ? 'Paste a link instead' : 'No link? Add it by name'}</button>
+
+                <label>How badly do you want it?</label>
+                <div class="prio" id="f-prio">
+                    ${Object.entries(PRIORITY).map(([k, [cls, l]]) => `<button type="button" class="prio-btn ${cls} ${it.priority === k ? 'on' : ''}" data-prio="${k}">${{ must: '🔥', nice: '😊', dream: '✨' }[k]} ${l}</button>`).join('')}
+                </div>
+
+                <label for="f-reason">Why do you want it? <span style="font-weight:normal;color:var(--muted)">(optional)</span></label>
                 <textarea id="f-reason" maxlength="300" placeholder="Helps friends pick the right thing">${esc(it.reason)}</textarea>
-                <div class="dlg-actions"><button type="button" class="ghost" data-close>Cancel</button><button class="primary" type="submit">Save</button></div>
+                <div class="dlg-actions"><button type="button" class="ghost" data-close>Cancel</button><button class="primary" type="submit" id="f-save">${item ? 'Save' : 'Add to my list'}</button></div>
             </form>`;
             dlg.showModal();
-            dlg.querySelector('#itemform').onsubmit = () => {
-                const v = id => dlg.querySelector(id).value.trim();
-                const data = { title: v('#f-title'), link: v('#f-link'), price: v('#f-price'), priority: v('#f-priority'), reason: v('#f-reason'), image: v('#f-image') };
+
+            const $ = id => dlg.querySelector(id);
+            let image = it.image || '';
+            let priority = it.priority || '';
+
+            function showImage() {
+                const img = safeUrl(image);
+                $('#f-img').innerHTML = img ? `<img src="${esc(img)}" alt="" onerror="this.remove()">` : '';
+            }
+
+            function refresh() {
+                const hasLink = !!safeUrl($('#f-link').value.trim());
+                $('#f-linkwrap').hidden = noLink;
+                $('#f-preview').hidden = !(noLink || hasLink || $('#f-title').value);
+                $('#f-save').disabled = !$('#f-title').value.trim() || !priority || (!noLink && !hasLink);
+            }
+
+            async function lookup() {
+                const u = safeUrl($('#f-link').value.trim());
+                refresh();
+                if (!u) return;
+                const myId = ++lookupId;
+                $('#f-status').textContent = 'Looking up the product…';
+                $('#f-title').value = ''; image = ''; showImage(); refresh();
+                const meta = await lookupLink(u);
+                if (myId !== lookupId) return; // a newer link was pasted
+                $('#f-title').value = meta.title; image = meta.image; showImage();
+                $('#f-status').textContent = `From ${shopName(u)} · tap the name to change it`;
+                refresh();
+            }
+
+            if (it.link) $('#f-status').textContent = `From ${shopName(safeUrl(it.link) || 'https://shop')} · tap the name to change it`;
+            showImage(); refresh();
+            if (!item) setTimeout(() => $('#f-link').focus(), 50);
+
+            let debounce;
+            $('#f-link').addEventListener('paste', () => setTimeout(lookup, 0));
+            $('#f-link').addEventListener('input', () => { clearTimeout(debounce); debounce = setTimeout(lookup, 500); });
+            $('#f-title').addEventListener('input', refresh);
+            $('#f-nolink').onclick = () => {
+                noLink = !noLink; lookupId++;
+                $('#f-nolink').textContent = noLink ? 'Paste a link instead' : 'No link? Add it by name';
+                $('#f-status').textContent = noLink ? 'Describe what you would like' : '';
+                if (noLink) { $('#f-link').value = ''; image = ''; showImage(); }
+                refresh();
+                (noLink ? $('#f-title') : $('#f-link')).focus();
+            };
+            $('#f-prio').onclick = e => {
+                const b = e.target.closest('[data-prio]');
+                if (!b) return;
+                priority = b.dataset.prio;
+                $('#f-prio').querySelectorAll('.prio-btn').forEach(x => x.classList.toggle('on', x === b));
+                refresh();
+            };
+
+            $('#itemform').onsubmit = () => {
+                const data = { title: $('#f-title').value.trim(), link: noLink ? '' : $('#f-link').value.trim(), priority, reason: $('#f-reason').value.trim(), image };
                 if (item) Object.assign(item, data);
-                else listOf(me()).items.unshift({ id: uid(), claims: [], ...data });
+                else listOf(me()).items.unshift({ id: uid(), claims: [], price: '', ...data });
                 save(); render(); toast(item ? 'Wish updated' : 'Wish added 🎁');
             };
         }
