@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merry Wishlist</title>
+    <style>
+        :root {
+            --bg: #fbf7f2;
+            --card: #ffffff;
+            --ink: #2b2420;
+            --muted: #7a6f66;
+            --line: #ece3d9;
+            --red: #b3261e;
+            --red-soft: #fbe9e7;
+            --green: #2e6b4f;
+            --green-soft: #e5f2ea;
+            --gold: #b8860b;
+            --gold-soft: #fbf3dc;
+            --radius: 14px;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.45;
+        }
+
+        header {
+            background: var(--red);
+            color: #fff;
+            padding: 16px;
+        }
+
+        .wrap { max-width: 960px; margin: 0 auto; padding: 0 16px; }
+        header .wrap { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 0; }
+        header h1 { margin: 0; font-size: 1.4rem; }
+        header small { opacity: .85; display: block; font-size: .8rem; }
+
+        .switcher { display: flex; gap: 8px; align-items: center; font-size: .85rem; }
+        .switcher select { padding: 6px 8px; border-radius: 8px; border: none; font: inherit; }
+
+        nav.tabs { display: flex; gap: 4px; margin: 16px 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
+        nav.tabs button {
+            background: none; border: none; padding: 10px 14px; font: inherit; color: var(--muted);
+            border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap;
+        }
+        nav.tabs button.active { color: var(--red); border-bottom-color: var(--red); font-weight: 600; }
+
+        h2 { font-size: 1.15rem; margin: 24px 0 8px; }
+        h3 { font-size: 1rem; margin: 0 0 4px; }
+        p.hint { color: var(--muted); margin: 0 0 12px; font-size: .9rem; }
+
+        .panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+
+        .item { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; }
+        .item .img { aspect-ratio: 4/3; background: var(--gold-soft) center/cover no-repeat; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; }
+        .item .img.ph { aspect-ratio: auto; height: 96px; font-size: 2rem; }
+        .item .body { padding: 12px 14px; flex: 1; display: flex; flex-direction: column; gap: 6px; }
+        .item .price { color: var(--green); font-weight: 600; font-size: .9rem; }
+        .item .reason { background: var(--gold-soft); border-radius: 10px; padding: 8px 10px; font-size: .88rem; font-style: italic; }
+        .item .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 6px; }
+
+        .badge { display: inline-block; font-size: .75rem; padding: 2px 8px; border-radius: 99px; font-weight: 600; }
+        .badge.must { background: var(--red-soft); color: var(--red); }
+        .badge.nice { background: var(--green-soft); color: var(--green); }
+        .badge.dream { background: var(--gold-soft); color: var(--gold); }
+
+        .status { font-size: .85rem; border-radius: 10px; padding: 8px 10px; }
+        .status.reserved { background: var(--gold-soft); color: #6b4f00; }
+        .status.purchased { background: var(--green-soft); color: var(--green); }
+        .status.open { background: #f4f1ed; color: var(--muted); }
+
+        button, .btn {
+            font: inherit; font-size: .88rem; padding: 7px 12px; border-radius: 9px; cursor: pointer;
+            border: 1px solid var(--line); background: #fff; color: var(--ink); text-decoration: none;
+        }
+        button.primary { background: var(--red); border-color: var(--red); color: #fff; }
+        button.green { background: var(--green); border-color: var(--green); color: #fff; }
+        button.ghost { background: none; border-color: transparent; color: var(--muted); }
+        button:disabled { opacity: .5; cursor: not-allowed; }
+
+        label { display: block; font-size: .85rem; font-weight: 600; margin: 10px 0 4px; }
+        input[type=text], input[type=url], input[type=number], textarea, select.field {
+            width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 9px; font: inherit; background: #fff;
+        }
+        textarea { resize: vertical; min-height: 60px; }
+        .row { display: flex; gap: 10px; flex-wrap: wrap; }
+        .row > * { flex: 1; min-width: 140px; }
+
+        .vis-option { display: flex; gap: 10px; align-items: flex-start; padding: 10px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px; cursor: pointer; font-weight: normal; }
+        .vis-option input { margin-top: 4px; }
+        .vis-option.selected { border-color: var(--red); background: var(--red-soft); }
+        .vis-option span { color: var(--muted); font-size: .85rem; display: block; }
+
+        .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 99px; border: 1px solid var(--line); background: #fff; font-size: .85rem; cursor: pointer; }
+        .chip.on { background: var(--green-soft); border-color: var(--green); color: var(--green); }
+
+        .person { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; cursor: pointer; }
+        .person:hover { border-color: var(--red); }
+        .avatar { width: 42px; height: 42px; border-radius: 50%; background: var(--red-soft); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex: none; }
+        .person .meta { color: var(--muted); font-size: .82rem; }
+
+        .empty { text-align: center; color: var(--muted); padding: 32px 16px; }
+
+        dialog { border: none; border-radius: var(--radius); padding: 0; width: min(520px, calc(100vw - 32px)); }
+        dialog::backdrop { background: rgba(30, 20, 15, .45); }
+        dialog .dlg { padding: 18px; }
+        dialog .dlg-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+        .receipt-preview { max-width: 100%; max-height: 220px; border-radius: 10px; margin-top: 8px; border: 1px solid var(--line); }
+
+        .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 10px; font-size: .9rem; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: calc(100vw - 32px); }
+        .toast.show { opacity: 1; }
+
+        footer { color: var(--muted); font-size: .8rem; text-align: center; padding: 32px 16px; }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="wrap">
+            <div>
+                <h1>🎄 Merry Wishlist</h1>
+                <small>Gifts they actually want. Surprises they never saw coming.</small>
+            </div>
+            <div class="switcher">
+                <label for="who" style="margin:0;color:#fff;font-weight:normal">Viewing as</label>
+                <select id="who"></select>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+        <nav class="tabs" id="tabs">
+            <button data-tab="mine" class="active">My wishlist</button>
+            <button data-tab="friends">Friends' lists</button>
+            <button data-tab="discover">Discover public</button>
+            <button data-tab="gifts">Gifts I'm giving</button>
+            <button data-tab="contacts">Contacts</button>
+        </nav>
+        <section id="view"></section>
+    </main>
+
+    <footer>
+        Prototype: everything is saved in this browser only. Use “Viewing as” to switch between demo people.
+        <br><button class="ghost" id="reset">Reset demo data</button>
+    </footer>
+
+    <dialog id="dlg"></dialog>
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ---------- Data ----------
+        const STORE_KEY = 'merry-wishlist-v1';
+
+        function seed() {
+            return {
+                currentUser: 'cayna',
+                users: {
+                    cayna: { name: 'Cayna', emoji: '🎨', contacts: ['mae', 'kala', 'lil', 'peter'] },
+                    mae: { name: 'Mae', emoji: '🦊', contacts: ['cayna', 'kala', 'lil'] },
+                    kala: { name: 'Kala', emoji: '🌙', contacts: ['cayna', 'mae'] },
+                    lil: { name: 'Lil', emoji: '🐝', contacts: ['cayna', 'mae', 'peter'] },
+                    peter: { name: 'Peter', emoji: '🧚', contacts: ['cayna', 'lil'] },
+                    wendy: { name: 'Wendy', emoji: '⭐', contacts: [] }
+                },
+                lists: {
+                    cayna: {
+                        visibility: 'contacts', allowed: [],
+                        items: [
+                            { id: uid(), title: 'Procreate brush pack + Apple Pencil tips', link: 'https://example.com/pencil-tips', price: '25', priority: 'must', reason: 'My tips are worn down from all the sketching. I draw every day!', image: '', claims: [] },
+                            { id: uid(), title: 'Sakura Pigma Micron pen set', link: 'https://example.com/micron', price: '18', priority: 'nice', reason: 'For inking traditional sketches before I scan them.', image: '', claims: [] },
+                            { id: uid(), title: 'Weekend pottery class', link: '', price: '90', priority: 'dream', reason: '', image: '', claims: [] }
+                        ]
+                    },
+                    mae: {
+                        visibility: 'contacts', allowed: [],
+                        items: [
+                            { id: uid(), title: 'Cozy knit cardigan (oatmeal, size M)', link: 'https://example.com/cardigan', price: '55', priority: 'must', reason: 'My old one finally got a hole in the elbow.', image: '', claims: [{ by: 'lil', status: 'reserved', at: Date.now() - 86400000 }] },
+                            { id: uid(), title: 'The Night Circus (hardcover)', link: 'https://example.com/night-circus', price: '20', priority: 'nice', reason: 'Borrowed it once and never finished it.', image: '', claims: [] },
+                            { id: uid(), title: 'Film camera roll developing kit', link: '', price: '40', priority: 'dream', reason: '', image: '', claims: [] }
+                        ]
+                    },
+                    kala: {
+                        visibility: 'custom', allowed: ['cayna'],
+                        items: [
+                            { id: uid(), title: 'Moon phase wall hanging', link: 'https://example.com/moon', price: '30', priority: 'nice', reason: 'For my new apartment!', image: '', claims: [] },
+                            { id: uid(), title: 'Noise-cancelling earbuds', link: 'https://example.com/earbuds', price: '120', priority: 'must', reason: 'My commute is so loud.', image: '', claims: [{ by: 'mae', status: 'purchased', at: Date.now() - 3600000, proof: { type: 'link', note: 'Bought through the app link' } }] }
+                        ]
+                    },
+                    lil: { visibility: 'public', allowed: [], items: [
+                        { id: uid(), title: 'Beekeeping starter book', link: 'https://example.com/bees', price: '22', priority: 'nice', reason: 'Dreaming of a backyard hive someday.', image: '', claims: [] }
+                    ] },
+                    peter: { visibility: 'contacts', allowed: [], items: [] },
+                    wendy: { visibility: 'public', allowed: [], items: [
+                        { id: uid(), title: 'Star map print of the night I was born', link: 'https://example.com/starmap', price: '45', priority: 'dream', reason: '', image: '', claims: [] }
+                    ] }
+                },
+                clicks: [] // tracked buy-link clicks awaiting confirmation
+            };
+        }
+
+        function uid() { return Math.random().toString(36).slice(2, 10); }
+
+        let db;
+        try { db = JSON.parse(localStorage.getItem(STORE_KEY)) || seed(); } catch (e) { db = seed(); }
+
+        function save() {
+            try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); }
+            catch (e) { toast('Could not save (storage full?). Try a smaller receipt image.'); }
+        }
+
+        const me = () => db.currentUser;
+        const user = id => db.users[id];
+        const listOf = id => db.lists[id] || (db.lists[id] = { visibility: 'contacts', allowed: [], items: [] });
+
+        // Who can see whose list
+        function canView(viewer, owner) {
+            if (viewer === owner) return true;
+            const l = listOf(owner);
+            if (l.visibility === 'public') return true;
+            if (l.visibility === 'contacts') return user(owner).contacts.includes(viewer);
+            if (l.visibility === 'custom') return l.allowed.includes(viewer);
+            return false;
+        }
+
+        // ---------- Helpers ----------
+        function esc(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        function safeUrl(u) {
+            try { const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.href : ''; } catch (e) { return ''; }
+        }
+
+        const PRIORITY = { must: ['must', 'Really need'], nice: ['nice', 'Would love'], dream: ['dream', 'Dream gift'] };
+
+        function toast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg; t.classList.add('show');
+            clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2600);
+        }
+
+        function ago(ts) {
+            const m = Math.round((Date.now() - ts) / 60000);
+            if (m < 1) return 'just now';
+            if (m < 60) return m + 'm ago';
+            if (m < 1440) return Math.round(m / 60) + 'h ago';
+            return Math.round(m / 1440) + 'd ago';
+        }
+
+        function activeClaim(item) { return item.claims.find(c => c.status === 'purchased') || item.claims.find(c => c.status === 'reserved'); }
+
+        // ---------- Rendering ----------
+        let tab = 'mine';
+        let viewingFriend = null;
+        const view = document.getElementById('view');
+
+        function render() {
+            const sel = document.getElementById('who');
+            sel.innerHTML = Object.entries(db.users).map(([id, u]) => `<option value="${id}" ${id === me() ? 'selected' : ''}>${u.emoji} ${esc(u.name)}</option>`).join('');
+            document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+            ({ mine: renderMine, friends: renderFriends, discover: renderDiscover, gifts: renderGifts, contacts: renderContacts })[tab]();
+        }
+
+        function itemImage(item) {
+            const img = safeUrl(item.image);
+            return img ? `<div class="img" style="background-image:url('${esc(img)}')"></div>` : `<div class="img ph">🎁</div>`;
+        }
+
+        function itemCard(item, ownerId, mode) {
+            const [cls, label] = PRIORITY[item.priority] || PRIORITY.nice;
+            const link = safeUrl(item.link);
+            let status = '', actions = '';
+
+            if (mode === 'owner') {
+                // The owner never sees who claimed what — keeps the surprise.
+                actions = `<button data-act="edit" data-id="${item.id}">Edit</button><button class="ghost" data-act="delete" data-id="${item.id}">Remove</button>`;
+                if (link) actions = `<a class="btn" href="${esc(link)}" target="_blank" rel="noopener">View</a>` + actions;
+            } else {
+                const c = activeClaim(item);
+                const mine = item.claims.find(x => x.by === me());
+                if (!c) {
+                    status = `<div class="status open">Nobody has this yet. Be the one!</div>`;
+                    actions = `<button class="primary" data-act="reserve" data-id="${item.id}" data-owner="${ownerId}">I'll get this</button>`;
+                    if (link) actions += `<button data-act="buy" data-id="${item.id}" data-owner="${ownerId}">Buy via link</button>`;
+                } else if (c.status === 'reserved') {
+                    status = `<div class="status reserved">🔒 Reserved by ${c.by === me() ? 'you' : esc(user(c.by).name)} · ${ago(c.at)}</div>`;
+                    if (mine && mine.status === 'reserved') {
+                        actions = `<button class="green" data-act="proof" data-id="${item.id}" data-owner="${ownerId}">Mark purchased</button>`;
+                        if (link) actions += `<button data-act="buy" data-id="${item.id}" data-owner="${ownerId}">Buy via link</button>`;
+                        actions += `<button class="ghost" data-act="unreserve" data-id="${item.id}" data-owner="${ownerId}">Release</button>`;
+                    }
+                } else {
+                    const proof = c.proof?.type === 'receipt' ? '🧾 receipt uploaded' : c.proof?.type === 'link' ? '🔗 bought through app link' : 'self-reported';
+                    status = `<div class="status purchased">✅ Purchased by ${c.by === me() ? 'you' : esc(user(c.by).name)} · ${proof} · ${ago(c.at)}</div>`;
+                    if (c.by === me() && c.proof?.receipt) actions = `<button data-act="viewreceipt" data-id="${item.id}" data-owner="${ownerId}">View my receipt</button>`;
+                }
+            }
+
+            return `<div class="item">
+                ${itemImage(item)}
+                <div class="body">
+                    <div><span class="badge ${cls}">${label}</span></div>
+                    <h3>${esc(item.title)}</h3>
+                    ${item.price ? `<div class="price">~ €${esc(item.price)}</div>` : ''}
+                    ${item.reason ? `<div class="reason">“${esc(item.reason)}”</div>` : ''}
+                    ${status}
+                    <div class="actions">${actions}</div>
+                </div>
+            </div>`;
+        }
+
+        function renderMine() {
+            const l = listOf(me());
+            const contacts = user(me()).contacts;
+            const visOpt = (v, title, desc) => `<label class="vis-option ${l.visibility === v ? 'selected' : ''}">
+                <input type="radio" name="vis" value="${v}" ${l.visibility === v ? 'checked' : ''}>
+                <div>${title}<span>${desc}</span></div></label>`;
+
+            view.innerHTML = `
+                <div class="panel">
+                    <h2 style="margin-top:0">Who can see my list?</h2>
+                    ${visOpt('public', '🌍 Public', 'Anyone can find and view it.')}
+                    ${visOpt('contacts', '👥 All my contacts', `Everyone in your contact list (${contacts.length}).`)}
+                    ${visOpt('custom', '✨ Only people I choose', 'Hand-pick who gets to see it.')}
+                    ${l.visibility === 'custom' ? `
+                        <label>Choose who can see it</label>
+                        ${contacts.length ? `<div class="chips">${contacts.map(id => `<span class="chip ${l.allowed.includes(id) ? 'on' : ''}" data-act="toggleallowed" data-id="${id}">${user(id).emoji} ${esc(user(id).name)}</span>`).join('')}</div>` : `<p class="hint">Add contacts first in the Contacts tab.</p>`}
+                    ` : ''}
+                </div>
+
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                    <div>
+                        <h2>My wishes (${l.items.length})</h2>
+                        <p class="hint">You won't see who's buying what, so it stays a surprise. 🤫</p>
+                    </div>
+                    <button class="primary" data-act="add">+ Add a wish</button>
+                </div>
+                ${l.items.length ? `<div class="grid">${l.items.map(i => itemCard(i, me(), 'owner')).join('')}</div>` : `<div class="empty">Your list is empty. Add something you'd love to unwrap!</div>`}
+            `;
+
+            view.querySelectorAll('input[name=vis]').forEach(r => r.onchange = () => { l.visibility = r.value; save(); render(); toast('Visibility updated'); });
+        }
+
+        function personRow(id) {
+            const u = user(id), l = listOf(id);
+            const open = l.items.filter(i => !activeClaim(i)).length;
+            return `<div class="person" data-act="openfriend" data-id="${id}">
+                <div class="avatar">${u.emoji}</div>
+                <div style="flex:1"><strong>${esc(u.name)}</strong>
+                <div class="meta">${l.items.length} wishes · ${open} still up for grabs</div></div>
+                <span>›</span></div>`;
+        }
+
+        function renderFriendList(id) {
+            const u = user(id), l = listOf(id);
+            if (!canView(me(), id)) { viewingFriend = null; return render(); }
+            view.innerHTML = `
+                <button class="ghost" data-act="back">‹ Back</button>
+                <h2>${u.emoji} ${esc(u.name)}'s wishlist</h2>
+                <p class="hint">Reserve something to let other friends know you've got it covered. ${esc(u.name)} won't see this.</p>
+                ${l.items.length ? `<div class="grid">${l.items.map(i => itemCard(i, id, 'friend')).join('')}</div>` : `<div class="empty">${esc(u.name)} hasn't added any wishes yet.</div>`}
+            `;
+        }
+
+        function renderFriends() {
+            if (viewingFriend) return renderFriendList(viewingFriend);
+            const visible = user(me()).contacts.filter(id => canView(me(), id));
+            const hidden = user(me()).contacts.filter(id => !canView(me(), id));
+            view.innerHTML = `
+                <h2>Friends' lists</h2>
+                <p class="hint">Lists from your contacts that they've shared with you.</p>
+                ${visible.length ? `<div class="grid">${visible.map(personRow).join('')}</div>` : `<div class="empty">None of your contacts have shared a list with you yet.</div>`}
+                ${hidden.length ? `<p class="hint" style="margin-top:16px">🔒 Private to you: ${hidden.map(id => esc(user(id).name)).join(', ')}</p>` : ''}
+            `;
+        }
+
+        function renderDiscover() {
+            if (viewingFriend) return renderFriendList(viewingFriend);
+            const pub = Object.keys(db.users).filter(id => id !== me() && listOf(id).visibility === 'public');
+            view.innerHTML = `
+                <h2>Public wishlists</h2>
+                <p class="hint">Anyone who made their list public.</p>
+                ${pub.length ? `<div class="grid">${pub.map(personRow).join('')}</div>` : `<div class="empty">No public lists yet.</div>`}
+            `;
+        }
+
+        function renderGifts() {
+            const rows = [];
+            for (const [owner, l] of Object.entries(db.lists)) {
+                if (owner === me()) continue;
+                for (const item of l.items) {
+                    const c = item.claims.find(x => x.by === me());
+                    if (c) rows.push({ owner, item, c });
+                }
+            }
+            const pending = db.clicks.filter(k => k.by === me());
+            view.innerHTML = `
+                <h2>Gifts I'm giving</h2>
+                <p class="hint">Your secret gift registry.</p>
+                ${pending.length ? `<div class="panel"><strong>Did you finish buying?</strong>
+                    ${pending.map(k => {
+                        const item = listOf(k.owner).items.find(i => i.id === k.itemId);
+                        if (!item) return '';
+                        return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+                            <span style="flex:1">${esc(item.title)} for ${esc(user(k.owner).name)}</span>
+                            <button class="green" data-act="confirmclick" data-click="${k.id}">Yes, bought it</button>
+                            <button class="ghost" data-act="dismissclick" data-click="${k.id}">Not yet</button></div>`;
+                    }).join('')}</div>` : ''}
+                ${rows.length ? `<div class="grid">${rows.map(r => `<div>
+                    <p class="hint" style="margin:0 0 4px">For ${user(r.owner).emoji} ${esc(user(r.owner).name)}</p>
+                    ${itemCard(r.item, r.owner, 'friend')}</div>`).join('')}</div>` : `<div class="empty">You haven't claimed any gifts yet. Browse your friends' lists!</div>`}
+            `;
+        }
+
+        function renderContacts() {
+            const mine = user(me()).contacts;
+            const others = Object.keys(db.users).filter(id => id !== me() && !mine.includes(id));
+            view.innerHTML = `
+                <h2>My contacts</h2>
+                <p class="hint">Contacts can see your list when it's set to “All my contacts”.</p>
+                ${mine.length ? `<div class="chips">${mine.map(id => `<span class="chip on" data-act="removecontact" data-id="${id}">${user(id).emoji} ${esc(user(id).name)} ✕</span>`).join('')}</div>` : `<div class="empty">No contacts yet.</div>`}
+                <h2>Add people</h2>
+                ${others.length ? `<div class="chips">${others.map(id => `<span class="chip" data-act="addcontact" data-id="${id}">${user(id).emoji} ${esc(user(id).name)} +</span>`).join('')}</div>` : `<p class="hint">Everyone's already in your contacts.</p>`}
+            `;
+        }
+
+        // ---------- Dialogs ----------
+        const dlg = document.getElementById('dlg');
+
+        function openItemForm(item) {
+            const it = item || { title: '', link: '', price: '', priority: 'nice', reason: '', image: '' };
+            dlg.innerHTML = `<form class="dlg" method="dialog" id="itemform">
+                <h2 style="margin-top:0">${item ? 'Edit wish' : 'Add a wish'}</h2>
+                <label for="f-title">What would you like?</label>
+                <input type="text" id="f-title" required maxlength="120" value="${esc(it.title)}" placeholder="e.g. Wool scarf in forest green">
+                <label for="f-link">Link to the item (optional)</label>
+                <input type="url" id="f-link" value="${esc(it.link)}" placeholder="https://…">
+                <div class="row">
+                    <div><label for="f-price">Approx. price € (optional)</label><input type="number" min="0" step="1" id="f-price" value="${esc(it.price)}"></div>
+                    <div><label for="f-priority">How much do you want it?</label>
+                        <select class="field" id="f-priority">${Object.entries(PRIORITY).map(([k, [, l]]) => `<option value="${k}" ${it.priority === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+                </div>
+                <label for="f-image">Image URL (optional)</label>
+                <input type="url" id="f-image" value="${esc(it.image)}" placeholder="https://…/photo.jpg">
+                <label for="f-reason">Why do you want or need it? (optional)</label>
+                <textarea id="f-reason" maxlength="300" placeholder="Helps friends pick the right thing">${esc(it.reason)}</textarea>
+                <div class="dlg-actions"><button type="button" class="ghost" data-close>Cancel</button><button class="primary" type="submit">Save</button></div>
+            </form>`;
+            dlg.showModal();
+            dlg.querySelector('#itemform').onsubmit = () => {
+                const v = id => dlg.querySelector(id).value.trim();
+                const data = { title: v('#f-title'), link: v('#f-link'), price: v('#f-price'), priority: v('#f-priority'), reason: v('#f-reason'), image: v('#f-image') };
+                if (item) Object.assign(item, data);
+                else listOf(me()).items.unshift({ id: uid(), claims: [], ...data });
+                save(); render(); toast(item ? 'Wish updated' : 'Wish added 🎁');
+            };
+        }
+
+        function openProof(ownerId, item) {
+            dlg.innerHTML = `<form class="dlg" method="dialog" id="proofform">
+                <h2 style="margin-top:0">Mark as purchased</h2>
+                <p class="hint">Show other friends it's bought so nobody doubles up. ${esc(user(ownerId).name)} won't see this.</p>
+                <label for="r-file">Upload your receipt (optional, image)</label>
+                <input type="file" id="r-file" accept="image/*">
+                <img id="r-prev" class="receipt-preview" hidden alt="Receipt preview">
+                <div class="dlg-actions"><button type="button" class="ghost" data-close>Cancel</button><button class="green" type="submit">Confirm purchase</button></div>
+            </form>`;
+            dlg.showModal();
+            let receipt = null;
+            dlg.querySelector('#r-file').onchange = async e => {
+                const f = e.target.files[0];
+                if (!f) return;
+                receipt = await shrinkImage(f);
+                const p = dlg.querySelector('#r-prev'); p.src = receipt; p.hidden = false;
+            };
+            dlg.querySelector('#proofform').onsubmit = () => {
+                markPurchased(ownerId, item, receipt ? { type: 'receipt', receipt } : { type: 'self' });
+            };
+        }
+
+        // Downscale receipts so they fit in local storage
+        function shrinkImage(file) {
+            return new Promise(resolve => {
+                const img = new Image();
+                img.onload = () => {
+                    const scale = Math.min(1, 800 / Math.max(img.width, img.height));
+                    const c = document.createElement('canvas');
+                    c.width = img.width * scale; c.height = img.height * scale;
+                    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+                    URL.revokeObjectURL(img.src);
+                    resolve(c.toDataURL('image/jpeg', 0.7));
+                };
+                img.src = URL.createObjectURL(file);
+            });
+        }
+
+        function markPurchased(ownerId, item, proof) {
+            item.claims = item.claims.filter(c => c.by !== me());
+            item.claims.push({ by: me(), status: 'purchased', at: Date.now(), proof });
+            db.clicks = db.clicks.filter(k => !(k.by === me() && k.itemId === item.id));
+            save(); render(); toast('Marked as purchased ✅');
+        }
+
+        // ---------- Events ----------
+        function findItem(owner, id) { return listOf(owner).items.find(i => i.id === id); }
+
+        document.addEventListener('click', e => {
+            if (e.target.closest('[data-close]')) { dlg.close(); return; }
+            const t = e.target.closest('[data-act]');
+            if (!t) return;
+            const { act, id, owner } = t.dataset;
+            const l = listOf(me());
+
+            switch (act) {
+                case 'add': openItemForm(); break;
+                case 'edit': openItemForm(l.items.find(i => i.id === id)); break;
+                case 'delete':
+                    if (confirm('Remove this wish?')) { l.items = l.items.filter(i => i.id !== id); save(); render(); }
+                    break;
+                case 'toggleallowed':
+                    l.allowed = l.allowed.includes(id) ? l.allowed.filter(x => x !== id) : [...l.allowed, id];
+                    save(); render(); break;
+                case 'openfriend': viewingFriend = id; render(); window.scrollTo(0, 0); break;
+                case 'back': viewingFriend = null; render(); break;
+                case 'reserve': {
+                    const item = findItem(owner, id);
+                    if (activeClaim(item)) { toast('Someone just got there first!'); render(); break; }
+                    item.claims.push({ by: me(), status: 'reserved', at: Date.now() });
+                    save(); render(); toast("Reserved! Others will see it's covered.");
+                    break;
+                }
+                case 'unreserve': {
+                    const item = findItem(owner, id);
+                    item.claims = item.claims.filter(c => c.by !== me());
+                    save(); render(); toast('Released back to the list');
+                    break;
+                }
+                case 'buy': {
+                    // Tracked buy link: reserve, record the click, open the shop.
+                    // A real backend would confirm the order via retailer/affiliate callbacks.
+                    const item = findItem(owner, id);
+                    const c = activeClaim(item);
+                    if (c && c.by !== me()) { toast('Someone already has this one'); break; }
+                    if (!c) item.claims.push({ by: me(), status: 'reserved', at: Date.now() });
+                    if (!db.clicks.some(k => k.by === me() && k.itemId === id)) db.clicks.push({ id: uid(), by: me(), owner, itemId: id, at: Date.now() });
+                    save();
+                    window.open(safeUrl(item.link), '_blank', 'noopener');
+                    tab = 'gifts'; viewingFriend = null; render();
+                    toast("Reserved for you. Come back and confirm once you've bought it.");
+                    break;
+                }
+                case 'confirmclick': {
+                    const k = db.clicks.find(x => x.id === t.dataset.click);
+                    const item = k && findItem(k.owner, k.itemId);
+                    if (item) markPurchased(k.owner, item, { type: 'link' });
+                    break;
+                }
+                case 'dismissclick':
+                    db.clicks = db.clicks.filter(x => x.id !== t.dataset.click); save(); render(); break;
+                case 'proof': openProof(owner, findItem(owner, id)); break;
+                case 'viewreceipt': {
+                    const c = findItem(owner, id).claims.find(x => x.by === me());
+                    dlg.innerHTML = `<div class="dlg"><h2 style="margin-top:0">Your receipt</h2><img class="receipt-preview" src="${c.proof.receipt}" alt="Receipt"><div class="dlg-actions"><button data-close>Close</button></div></div>`;
+                    dlg.showModal(); break;
+                }
+                case 'addcontact': user(me()).contacts.push(id); save(); render(); break;
+                case 'removecontact':
+                    user(me()).contacts = user(me()).contacts.filter(x => x !== id);
+                    l.allowed = l.allowed.filter(x => x !== id);
+                    save(); render(); break;
+            }
+        });
+
+        document.getElementById('tabs').onclick = e => {
+            const b = e.target.closest('button');
+            if (!b) return;
+            tab = b.dataset.tab; viewingFriend = null; render();
+        };
+
+        document.getElementById('who').onchange = e => {
+            db.currentUser = e.target.value; viewingFriend = null; save(); render();
+            toast(`Now viewing as ${user(me()).name}`);
+        };
+
+        document.getElementById('reset').onclick = () => {
+            if (confirm('Reset all demo data?')) { db = seed(); save(); tab = 'mine'; viewingFriend = null; render(); }
+        };
+
+        render();
+    </script>
+</body>
+
+</html>
