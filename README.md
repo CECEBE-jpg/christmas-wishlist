@@ -15,6 +15,20 @@ A Christmas wishlist where you share the gifts you'd actually love, so friends c
 
 Open `index.html` in a browser. Use **"Viewing as"** at the top to switch between demo people and see both the list owner's and the gift giver's side.
 
+## Affiliate links (earning money)
+
+When a friend taps **"Buy via link"**, the shop link is turned into a commission link. Fill in your IDs in the `AFFILIATE` block at the top of the `<script>` in `index.html`; empty values are skipped:
+
+| Setting | Where to get it | Used for |
+|---|---|---|
+| `amazonTags` | [Amazon Associates](https://partnernet.amazon.nl) (one tracking ID per Amazon store) | Amazon links |
+| `bolSiteId` | [Bol.com partner program](https://partner.bol.com) | Bol.com links |
+| `skimlinksId` | [Skimlinks](https://skimlinks.com) | All other shops |
+| `sovrnKey` | [Sovrn Commerce](https://www.sovrn.com/commerce/) | All other shops (if no Skimlinks) |
+
+Order: Amazon / Bol first (you keep the full commission), then Skimlinks, then Sovrn, otherwise the plain link.
+Before going live, check each program's current link format and terms, and keep the commission disclosure visible.
+
 ## Prototype status
 
 Everything is stored in your browser only (no accounts or server yet). Next steps for a real app:

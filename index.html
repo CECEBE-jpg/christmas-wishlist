@@ -151,7 +151,8 @@
     </main>
 
     <footer>
-        Prototype: everything is saved in this browser only. Use “Viewing as” to switch between demo people.
+        When you buy a gift through our links, we may earn a small commission at no extra cost to you.
+        <br>Prototype: everything is saved in this browser only. Use “Viewing as” to switch between demo people.
         <br><button class="ghost" id="reset">Reset demo data</button>
     </footer>
 
@@ -159,6 +160,22 @@
     <div class="toast" id="toast"></div>
 
     <script>
+        // ---------- Affiliate settings ----------
+        // Fill in your IDs once your programs are approved. Empty values are skipped.
+        // Direct programs (Amazon, Bol) are tried first because you keep the full commission;
+        // Skimlinks / Sovrn then cover every other shop.
+        const AFFILIATE = {
+            amazonTags: {            // Amazon Associates tracking ID per store, e.g. 'merrywishlist-21'
+                'amazon.nl': '',
+                'amazon.de': '',
+                'amazon.com': '',
+                'amazon.co.uk': ''
+            },
+            bolSiteId: '',           // Bol.com partner program site ID
+            skimlinksId: '',         // Skimlinks publisher ID, e.g. '123456X1234567'
+            sovrnKey: ''             // Sovrn Commerce (VigLink) API key
+        };
+
         // ---------- Data ----------
         const STORE_KEY = 'merry-wishlist-v1';
 
@@ -240,6 +257,23 @@
 
         function safeUrl(u) {
             try { const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.href : ''; } catch (e) { return ''; }
+        }
+
+        // Turn a plain shop link into a commission-earning link (or return it unchanged).
+        function affiliateUrl(u) {
+            const href = safeUrl(u);
+            if (!href) return '';
+            const url = new URL(href);
+            const host = url.hostname.replace(/^www\./, '');
+            const enc = encodeURIComponent(href);
+
+            const amazonTag = AFFILIATE.amazonTags[host];
+            if (amazonTag) { url.searchParams.set('tag', amazonTag); return url.href; }
+            if (host === 'bol.com' && AFFILIATE.bolSiteId)
+                return `https://partner.bol.com/click/click?p=2&t=url&s=${encodeURIComponent(AFFILIATE.bolSiteId)}&f=TXL&url=${enc}&name=wishlist`;
+            if (AFFILIATE.skimlinksId) return `https://go.skimresources.com/?id=${encodeURIComponent(AFFILIATE.skimlinksId)}&xs=1&url=${enc}`;
+            if (AFFILIATE.sovrnKey) return `https://redirect.viglink.com/?key=${encodeURIComponent(AFFILIATE.sovrnKey)}&u=${enc}`;
+            return href;
         }
 
         const PRIORITY = { must: ['must', 'Really need'], nice: ['nice', 'Would love'], dream: ['dream', 'Dream gift'] };
@@ -369,6 +403,7 @@
                 <button class="ghost" data-act="back">‹ Back</button>
                 <h2>${u.emoji} ${esc(u.name)}'s wishlist</h2>
                 <p class="hint">Reserve something to let other friends know you've got it covered. ${esc(u.name)} won't see this.</p>
+                <p class="hint" style="font-size:.8rem">Buying through “Buy via link” may earn us a small commission at no extra cost to you.</p>
                 ${l.items.length ? `<div class="grid">${l.items.map(i => itemCard(i, id, 'friend')).join('')}</div>` : `<div class="empty">${esc(u.name)} hasn't added any wishes yet.</div>`}
             `;
         }
@@ -555,7 +590,7 @@
                     if (!c) item.claims.push({ by: me(), status: 'reserved', at: Date.now() });
                     if (!db.clicks.some(k => k.by === me() && k.itemId === id)) db.clicks.push({ id: uid(), by: me(), owner, itemId: id, at: Date.now() });
                     save();
-                    window.open(safeUrl(item.link), '_blank', 'noopener');
+                    window.open(affiliateUrl(item.link), '_blank', 'noopener');
                     tab = 'gifts'; viewingFriend = null; render();
                     toast("Reserved for you. Come back and confirm once you've bought it.");
                     break;
